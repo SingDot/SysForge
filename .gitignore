@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.vscode/
+update.zip
+*.spec
+build/
+dist/
+Output/
+sysforge_clean_audit.log
+
+# Artefatos de auditoria/telemetria gerados em runtime (contêm hostname/IP local)
+logs/
+*-snapshot.json
+sysforge_debug_worker.txt
+
+# Script de deploy — contém token do GitHub (NUNCA versionar)
+deploy.bat
+version_info.txt
