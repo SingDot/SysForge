@@ -1,6 +1,6 @@
 # SYSFORGE - MATRIZ DE RASTREAMENTO (TIMELINE)
 **Status Atual:** ATIVO
-**Versão Atual:** 1.1.4 (Office Deploy Redesign & Advanced Bundling)
+**Versão Atual:** 1.1.7 (Retomada Automática do Office + Pipeline de Deploy + Higiene de Anonimato)
 
 ## DIRETRIZES GLOBAIS DE PRODUÇÃO (REGRAS ABSOLUTAS)
 As regras a seguir são a lei máxima de desenvolvimento deste projeto. Elas não podem ser ignoradas ou alteradas pela IA.
@@ -20,6 +20,8 @@ As regras a seguir são a lei máxima de desenvolvimento deste projeto. Elas nã
 - [Feature] Retomada automática da instalação do Office após reboot. Novo módulo `gear/resume_office.py`: quando Esterilização + Instalar Office são selecionados juntos, o Office antigo é removido, a retomada é armada (copia o exe para `%ProgramData%\SysForge` — funciona no Host e no Portable sem depender do pendrive — e registra um gatilho RunOnce autolimpante) e o app pede reinício. No boot, o SysForge inicia com `--resume-office`, abre uma janela mínima e conclui a instalação/ativação sozinho, limpando o estado.
 - [Correção de bug latente] Antes, marcar Esterilização + Office instalava o Office na MESMA sessão, logo após deletar o serviço C2R (que fica pendente de exclusão até o reboot) — o que corrompia/falhava a instalação. Agora o reboot obrigatório entre remoção e reinstalação garante instalação limpa.
 - [Robustez] Guarda de tentativas (máx. 2) e RunOnce single-shot eliminam risco de loop de boot. Em modo dev (.py não compilado) o `arm_resume` é no-op seguro e cai para instalação inline.
+- [Correção/Deploy] `deploy.bat` (e `bump.bat`/`reset_history.bat`) estavam com quebras de linha LF (gerados por ferramenta), o que quebrava o cmd.exe ("abre e fecha"). Convertidos para CRLF. Além disso o `deploy.bat` foi reescrito com estrutura `goto` (em vez de blocos gigantes `if (...)`) e extração de ID via arquivo (em vez de `for /f`), eliminando o erro de parsing ": foi inesperado" causado por parênteses/JSON dentro de blocos.
+- [Deploy/Publicado] v1.1.7 publicada no GitHub (commit `5e38dc1`, Release v1.1.7 com Portable + Setup). OTA validado no endpoint `releases/latest`.
 
 ### [Versão 1.1.6] - Data: 2026-07-05
 - [Correção/Software] `install_software` reescrito: resolve o caminho real do `winget.exe` (o alias em WindowsApps some do PATH quando o app roda elevado — causa provável de "conclui mas não instala"), captura a saída e reporta status honesto por app (instalado / já instalado / não encontrado / falha com detalhe). Removida a dependência do `window_enforcer`.
