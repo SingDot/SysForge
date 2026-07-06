@@ -811,6 +811,30 @@ class AppWindow(ctk.CTk):
 
     def _done_dash(self):
         self.dash_prog.set(1.0); self.dash_prog.pack_forget(); self.btn_dash.configure(state="normal")
+
+        # Se a Esterilização removeu o Office e a reinstalação foi armada,
+        # é preciso reiniciar para concluir a instalação limpa.
+        try:
+            from gear.resume_office import is_resume_pending, request_reboot
+            if is_resume_pending():
+                self.lbl_dash_st.configure(text="♻️ Office removido — reinício necessário.")
+                import tkinter.messagebox as mb
+                if mb.askyesno(
+                    "Reinício necessário",
+                    "O Office antigo foi removido com sucesso.\n\n"
+                    "É preciso reiniciar o computador para concluir a instalação limpa. "
+                    "Ao ligar, o SysForge continua a instalação do Office automaticamente.\n\n"
+                    "Reiniciar agora?",
+                    icon="warning",
+                ):
+                    request_reboot(8)
+                    self.lbl_dash_st.configure(text="🔄 Reiniciando em instantes... a instalação continua ao ligar.")
+                else:
+                    self.lbl_dash_st.configure(text="⏸️ Reinicie quando puder — a instalação do Office continua ao ligar.")
+                return
+        except Exception:
+            pass
+
         self.lbl_dash_st.configure(text="✅ Processo finalizado com sucesso!")
 
     def _set_hostname(self):

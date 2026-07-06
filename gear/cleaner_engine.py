@@ -1,7 +1,10 @@
 import os
+import stat
 import shutil
 import subprocess
 import psutil
+
+CREATE_NO_WINDOW = 0x08000000
 
 PROCESSOS_NAVEGADORES = {
     "chrome.exe": "Google Chrome",
@@ -159,43 +162,75 @@ def calcular_lixo(alvos_selecionados):
                                     f_log.write(f"[IGNORADO - EM USO / NEGADO] {fp}\n")
     return total_bytes
 
+def _remover_arquivo(fp):
+    """Remove um arquivo contornando travas simples. Retorna bytes liberados (0 se falhar)."""
+    try:
+        size = os.path.getsize(fp)
+    except OSError:
+        size = 0
+    try:
+        os.chmod(fp, stat.S_IWRITE)
+    except Exception:
+        pass
+    try:
+        os.remove(fp)
+        return size
+    except Exception:
+        subprocess.run(["cmd.exe", "/c", "del", "/f", "/q", fp],
+                       creationflags=CREATE_NO_WINDOW, check=False)
+        return size if not os.path.exists(fp) else 0
+
+
 def executar_limpeza(alvos_selecionados, log_callback=None):
+    """Executa a limpeza dos alvos. Retorna (bytes_liberados, itens_removidos)."""
+    total_bytes = 0
+    total_itens = 0
+
     for alvo in alvos_selecionados:
         tipo = alvo.get("tipo")
-        
+        nome = alvo.get("_nome", "item")
+
         if tipo == "comando":
             cmd = alvo["exec"]
             if log_callback:
-                log_callback(f"Executando comando: {cmd}")
+                log_callback(f"⚙️ {nome}...")
             try:
-                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW)
             except Exception:
                 pass
             continue
-            
+
         path = os.path.expandvars(alvo["caminho"])
         if not os.path.exists(path):
             continue
-            
+
         if log_callback:
-            log_callback(f"Processando: {path}")
-            
+            log_callback(f"🧹 Limpando {nome}...")
+
         if os.path.isfile(path):
-            try:
-                os.remove(path)
-            except Exception:
-                pass
+            freed = _remover_arquivo(path)
+            if freed:
+                total_bytes += freed
+                total_itens += 1
         elif os.path.isdir(path):
             for root, dirs, files in os.walk(path, topdown=False):
                 for f in files:
                     fp = os.path.join(root, f)
-                    try:
-                        os.remove(fp)
-                    except Exception:
-                        pass
+                    if os.path.basename(fp).startswith("_MEI"):
+                        continue
+                    freed = _remover_arquivo(fp)
+                    if freed:
+                        total_bytes += freed
+                        total_itens += 1
                 for d in dirs:
                     dp = os.path.join(root, d)
                     try:
                         os.rmdir(dp)
                     except Exception:
                         pass
+
+    if log_callback:
+        mb = total_bytes / (1024 * 1024)
+        log_callback(f"✅ Limpeza concluída: {total_itens} itens, {mb:.2f} MB liberados.")
+    return total_bytes, total_itens

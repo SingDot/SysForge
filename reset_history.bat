@@ -36,6 +36,11 @@ if exist ".git" rmdir /s /q ".git"
 echo [*] Inicializando repositorio novo...
 git init
 git branch -M main
+
+:: Identidade anonima (marca) — evita vazar nome/hostname real nos commits
+git config user.name "SingDot"
+git config user.email "299635267+SingDot@users.noreply.github.com"
+
 git add -A
 git commit -m "SysForge v1.1.5 - Singularity Dot // SD-02 (historico limpo)"
 

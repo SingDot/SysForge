@@ -143,13 +143,21 @@ def build_cleaner_view(view):
         
         def _task():
             targets = get_selected_targets()
-            executar_limpeza(targets)
-            view.after(0, lambda: lbl_space.configure(text="ESPAÇO RECUPERÁVEL: 0.00 MB"))
+            if not targets:
+                view.after(0, lambda: lbl_space.configure(text="NENHUM ITEM SELECIONADO"))
+                view.after(0, progress.stop)
+                view.after(0, progress.pack_forget)
+                view.after(0, lambda: btn_analyze.configure(state="normal"))
+                view.after(0, lambda: btn_clean.configure(state="normal"))
+                return
+            freed, count = executar_limpeza(targets)
+            mb = freed / (1024 * 1024)
+            view.after(0, lambda: lbl_space.configure(text=f"LIBERADO: {mb:.2f} MB  ({count} itens)"))
             view.after(0, progress.stop)
             view.after(0, progress.pack_forget)
             view.after(0, lambda: btn_analyze.configure(state="normal"))
             view.after(0, lambda: btn_clean.configure(state="normal"))
-            
+
         threading.Thread(target=_task, daemon=True).start()
 
     btn_analyze = ctk.CTkButton(btn_frame, text="[ ANALISAR ]", font=("Helvetica", 12, "bold"), fg_color="#000000", hover_color="#333333", corner_radius=0, command=run_analysis)

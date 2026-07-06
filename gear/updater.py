@@ -13,7 +13,7 @@ import subprocess
 import urllib.request
 import json
 
-CURRENT_VERSION = "1.1.5"
+CURRENT_VERSION = "1.1.7"
 
 # ── Identidade do repositório (Anonimato: handle de marca, sem nome real) ──
 # Fonte única de verdade para todas as rotas do GitHub usadas pelo OTA.

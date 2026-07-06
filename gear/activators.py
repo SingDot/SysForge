@@ -4,21 +4,61 @@ import platform
 
 CREATE_NO_WINDOW = 0x08000000
 
+def _windows_ativado():
+    """Confere o status real da licença (LicenseStatus=1 => ativado). Independe de idioma."""
+    try:
+        ps = ("(Get-CimInstance SoftwareLicensingProduct -Filter \"Name like 'Windows%'\" "
+              "| Where-Object { $_.PartialProductKey } "
+              "| Select-Object -First 1 -ExpandProperty LicenseStatus)")
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                           creationflags=CREATE_NO_WINDOW, capture_output=True,
+                           text=True, timeout=30)
+        return r.stdout.strip() == "1"
+    except Exception:
+        return False
+
+
 def activate_windows(status_callback=None):
+    """Ativa o Windows via licença digital HWID (MAS) e confirma o status. Retorna bool."""
     if status_callback:
-        status_callback("Ativando Windows (HWID Digital License)...")
+        status_callback("🔑 Ativando Windows (Licença Digital HWID)...")
+
+    if _windows_ativado():
+        if status_callback:
+            status_callback("✅ O Windows já está ativado.")
+        return True
+
     try:
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 0 # SW_HIDE
-        
-        cmd = ["powershell.exe", "-WindowStyle", "Hidden", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; & ([ScriptBlock]::Create((irm https://get.activated.win))) /HWID /S"]
-        subprocess.run(cmd, creationflags=CREATE_NO_WINDOW, startupinfo=startupinfo, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        startupinfo.wShowWindow = 0  # SW_HIDE
+
+        cmd = ["powershell.exe", "-WindowStyle", "Hidden", "-NoProfile", "-ExecutionPolicy", "Bypass",
+               "-Command",
+               "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; "
+               "& ([ScriptBlock]::Create((irm https://get.activated.win))) /HWID /S"]
+        result = subprocess.run(cmd, creationflags=CREATE_NO_WINDOW, startupinfo=startupinfo,
+                                capture_output=True, text=True, encoding="utf-8",
+                                errors="replace", timeout=300)
+    except subprocess.TimeoutExpired:
+        if status_callback:
+            status_callback("⚠️ A ativação excedeu o tempo limite. Verifique a conexão com a internet.")
+        return False
+    except Exception as e:
+        if status_callback:
+            status_callback(f"❌ Erro ao executar o ativador: {e}")
+        return False
+
+    if _windows_ativado():
         if status_callback:
             status_callback("✅ Windows ativado com sucesso (Licença Digital).")
-    except subprocess.CalledProcessError as e:
-        if status_callback:
-            status_callback(f"❌ Erro ao ativar o Windows (Código {e.returncode}).")
+        return True
+
+    linhas = [l.strip() for l in (result.stdout or result.stderr or "").splitlines() if l.strip()]
+    detalhe = linhas[-1][:140] if linhas else "sem detalhes do ativador"
+    if status_callback:
+        status_callback(f"⚠️ Não foi possível confirmar a ativação. {detalhe}")
+    return False
 
 def capture_product_keys(status_callback=None):
     if status_callback:

@@ -1,7 +1,7 @@
 ; Versão pode ser injetada pelo deploy.bat via /DMyAppVersion=x.y.z
 ; (mantém este fallback para compilação manual direta no Inno Setup)
 #ifndef MyAppVersion
-  #define MyAppVersion "1.1.4"
+  #define MyAppVersion "1.1.5"
 #endif
 
 [Setup]

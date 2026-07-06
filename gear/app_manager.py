@@ -130,7 +130,12 @@ def run_uninstall(uninstall_string, status_callback=None):
         from gear.window_enforcer import enforce_window_rules
         p = subprocess.Popen(uninstall_string, creationflags=CREATE_NO_WINDOW, shell=True)
         enforce_window_rules(p.pid, duration=120)
-        p.wait()
+        try:
+            p.wait(timeout=300)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            if status_callback:
+                status_callback("⏱️ Desinstalador demorou demais — pode exigir ação manual.")
     except Exception as e:
         if status_callback:
             status_callback(f"Erro: {str(e)}")

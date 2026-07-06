@@ -27,6 +27,12 @@ if __name__ == "__main__":
         execute_update_mode(sys.argv[2], sys.argv[3])
         sys.exit(0)
 
+    if len(sys.argv) > 1 and sys.argv[1] == "--resume-office":
+        # Retomada automática pós-reboot: conclui a instalação limpa do Office.
+        from gear.resume_office import run_resume_office
+        run_resume_office()
+        sys.exit(0)
+
     # The current working directory might change during elevation, so we make sure it's the script dir.
     os.chdir(os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__)))
 

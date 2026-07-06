@@ -78,7 +78,8 @@ class GenericWorker:
     def _run(self):
         try:
             task_type = self.tasks.get("type")
-            
+            result_msg = "Operação concluída com sucesso!"
+
             if task_type == "dashboard":
                 if self.tasks.get("clean_temp"):
                     self._log_and_status("🧹 Limpando arquivos temporários...")
@@ -88,19 +89,39 @@ class GenericWorker:
                     self._log_and_status("🧹 Removendo Windows.old...")
                     remove_windows_old()
                     self._log_and_status("✅ Windows.old removido")
-                if self.tasks.get("debloat"):
+                did_debloat = bool(self.tasks.get("debloat"))
+                if did_debloat:
                     self._log_and_status("🧹 Iniciando Esterilização Profunda...")
                     from gear.debloater import executar_esterilizacao
                     executar_esterilizacao(self._log_and_status, self.progress_callback)
                 if self.tasks.get("install_office"):
-                    install_and_activate_office(self._log_and_status, self.progress_callback)
+                    if did_debloat:
+                        # Office foi REMOVIDO: o serviço C2R fica pendente de exclusão
+                        # até o reboot. Instalar por cima agora corromperia o setup.
+                        # Armamos a retomada automática e pedimos reinício.
+                        from gear.resume_office import arm_resume
+                        if arm_resume(activate=True):
+                            self._log_and_status("♻️ Office antigo removido. Reinicie para concluir a instalação limpa.")
+                            result_msg = "♻️ Reinicie o PC para concluir a instalação do Office (retomada automática armada)."
+                        else:
+                            # Modo dev (.py sem exe) — instala inline como fallback
+                            install_and_activate_office(self._log_and_status, self.progress_callback)
+                    else:
+                        install_and_activate_office(self._log_and_status, self.progress_callback)
                     
             elif task_type == "software":
                 softs = self.tasks.get("list", [])
                 total = len(softs)
+                ok = 0
                 for i, wid in enumerate(softs, 1):
-                    self._log_and_status(f"[{i}/{total}] Instalando...")
-                    install_software(wid, self._log_and_status)
+                    self._log_and_status(f"[{i}/{total}] Processando...")
+                    if install_software(wid, self._log_and_status):
+                        ok += 1
+                falhas = total - ok
+                if falhas == 0:
+                    result_msg = f"✅ Instalação finalizada: {ok}/{total} com sucesso."
+                else:
+                    result_msg = f"⚠️ Instalação finalizada: {ok}/{total} ok, {falhas} com falha (veja o log)."
                     
             elif task_type == "tweaks":
                 apply_selected_tweaks(self.tasks.get("tweaks_dict", {}), self._log_and_status)
@@ -156,7 +177,7 @@ class GenericWorker:
                         self._log_and_status(msg)
                         time.sleep(0.05)
                         
-            self._log_and_status("Operação concluída com sucesso!")
+            self._log_and_status(result_msg)
             time.sleep(1)
         except Exception as e:
             import traceback

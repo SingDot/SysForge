@@ -22,10 +22,17 @@ def force_restore_point(cb=None):
     return _run_bg(["powershell", "-NoProfile", "-Command", "Checkpoint-Computer -Description 'SysForge_Backup' -RestorePointType 'MODIFY_SETTINGS'"], cb)
 
 def repair_sfc_dism(cb=None):
-    if cb: cb("⏳ Iniciando Reparo DISM (Restauração da Imagem)...")
-    _run_bg(["dism", "/Online", "/Cleanup-Image", "/RestoreHealth"])
-    if cb: cb("⏳ Iniciando Reparo SFC (Arquivos do Sistema)...")
-    return _run_bg(["sfc", "/scannow"], cb)
+    if cb: cb("⏳ DISM: restaurando a imagem do Windows (pode levar 10-20 min, aguarde)...")
+    dism_ok = _run_bg(["dism", "/Online", "/Cleanup-Image", "/RestoreHealth"])
+    if cb: cb("✅ DISM concluído." if dism_ok else "⚠️ DISM retornou aviso (seguindo para o SFC).")
+    if cb: cb("⏳ SFC: verificando arquivos do sistema (pode levar alguns minutos)...")
+    sfc_ok = _run_bg(["sfc", "/scannow"])
+    if cb:
+        if sfc_ok:
+            cb("✅ Reparo concluído (DISM + SFC). Nenhum problema pendente.")
+        else:
+            cb("⚠️ SFC finalizou com avisos. Se persistir, reinicie e rode novamente.")
+    return dism_ok and sfc_ok
 
 def repair_disk_chkdsk(cb=None):
     if cb: cb("⏳ Agendando Chkdsk (Reparo físico/lógico) para o próximo Boot...")
